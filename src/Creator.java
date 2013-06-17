@@ -6,7 +6,7 @@ public class Creator {
 		LexerCreator.apply(name);
 		TokenCreator.apply(name);
 		TreeCreator.apply(name);
-		ParserCreator.apply(name);
+		//ParserCreator.apply(name);
 	}
 
 }
