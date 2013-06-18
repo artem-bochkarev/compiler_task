@@ -156,8 +156,7 @@ public class ParserHandMade {
 		String currentType = lex.curStr;
 		if ( typesMap.containsKey(currentType) == false ) {
 			//error unknown type
-			result.errorMsg = (lex.curPos + ": Unknown type: " + currentType + '\n');
-			result.result = Result.Res.FAIL;
+			result.setError("Unknown type: " + currentType + '\n', lex.curPos, lex.curStringNumber);
 			lex = copy;
 			return result;
 		}
@@ -179,75 +178,46 @@ public class ParserHandMade {
 		Set<Token.TokenName> tokensSet = getNextTokenVariants(Terminal.global_list);
 		if ( tokensSet.contains(lex.curToken()) == false ) {
 			//error unknown symbol...PANIC!!!
-			result.result = Result.Res.FAIL;
-			result.errorMsg = (lex.curPos + ": this token not expected here: " + lex.curStr + '\n');
+			result.setError( "This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber );
+			//change to figure scope
 			while ( (lex.curToken != Token.TokenName.END) && (tokensSet.contains( lex.curToken() ) == false) ) {
 				lex.nextToken();
 			}
 		}else {
 			//normal
-			return global_statement();
+			result = global_statement();
 		}
 		if ( lex.curToken != Token.TokenName.END ) {
 			Result tmp = global_list();
-			result.errorMsg += tmp.errorMsg;
-			if ( tmp.result == Result.Res.FAIL ) {
-				result.result = Result.Res.FAIL;
-			}else {
-				result.tree.children.addAll(tmp.tree.children);
-			}
+			result.appendResult(tmp);
 		}
 		return result;
 	}
 	Result global_statement() throws ParseException {
-		boolean isGood = true;
-		Lexer copy = null;
-		Tree result = null;
-		String value = null;
-		ParseException p = new ParseException("", 0);
-		HashSet<String> TEMP_variables = null;
-		Tree subTree_6_0 = null;
-		copy = lex.copy();
-		TEMP_variables = (HashSet<String>) variables.clone();
-		isGood = true;
-		value = "global_statement";
-		try {
-			subTree_6_0 = var_def();
-		}catch(ParseException a) {
-			isGood = false;
-			lex = copy;
-			if ( a.getErrorOffset() > p.getErrorOffset() )
-				p = a;
-			variables = TEMP_variables;
-		}
-		if (isGood == true) {
-			result = new Tree("global_statement", subTree_6_0);
+		Result result = new Result();
+		result.result = Result.Res.SUCCESS;
+		Set<Token.TokenName> tokensSet = getNextTokenVariants(Terminal.global_statement);
+		if (tokensSet.contains(lex.curToken()) == false) {
+			result.setError("This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber);
 			return result;
-		}
-
-		Tree subTree_7_0 = null;
-		copy = lex.copy();
-		TEMP_variables = (HashSet<String>) variables.clone();
-		isGood = true;
-		value = "global_statement";
-		try {
-			subTree_7_0 = func_def();
-		}catch(ParseException a) {
-			isGood = false;
+		}else {
+			Lexer copy = lex.copy();
+			Result resultVAR_DEF = var_def();
+			if ( resultVAR_DEF.result == Result.Res.SUCCESS ) {
+				return resultVAR_DEF;
+			}
 			lex = copy;
-			if ( a.getErrorOffset() > p.getErrorOffset() )
-				p = a;
-			variables = TEMP_variables;
+			copy = lex.copy();
+			Result resultFUNC_DEF = func_def();
+			if ( resultFUNC_DEF.result == Result.Res.SUCCESS ) {
+				return resultFUNC_DEF;
+			}
+			lex = copy;
+			result = Result.chooseResult(resultVAR_DEF, resultFUNC_DEF);
 		}
-		if (isGood == true) {
-			result = new Tree("global_statement", subTree_7_0);
-			return result;
-		}
-
-		globalException = p;
-		throw p;
+		return result;
 	}
-	Tree var_def() throws ParseException {
+	Result var_def() throws ParseException {
 		boolean isGood = true;
 		Lexer copy = null;
 		Tree result = null;
@@ -538,7 +508,7 @@ public class ParserHandMade {
 		globalException = p;
 		throw p;
 	}
-	Tree func_def() throws ParseException {
+	Result func_def() throws ParseException {
 		boolean isGood = true;
 		Lexer copy = null;
 		Tree result = null;

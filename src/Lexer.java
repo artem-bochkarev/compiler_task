@@ -5,9 +5,10 @@ public class Lexer implements Cloneable {
 	boolean skipWS;
 	int curChar;
 	int curPos;
+	int curStringNumber;
 	Token.TokenName curToken;
 	String curStr;
-	
+		
 	
 	private class Regexp {
 		public String expr;
@@ -30,6 +31,7 @@ public class Lexer implements Cloneable {
 		c.curToken = curToken;
 		c.curStr = curStr;
 		c.regexps = regexps;
+		c.curStringNumber = curStringNumber;
 	    return c;
 	}
 	
@@ -52,6 +54,8 @@ public class Lexer implements Cloneable {
 			if ( curPos >= input.length() )
 				return;
 			while (isBlank(input.charAt(curPos))) {
+				if ( input.charAt(curPos) == '\n' )
+					curStringNumber++;
 				curPos++;
 				if ( curPos >= input.length() )
 					return;
@@ -87,9 +91,14 @@ public class Lexer implements Cloneable {
 		return curPos;
 	}
 	
+	public int curStringNumber() {
+		return curStringNumber;
+	}
+	
 	public Lexer(String str) throws ParseException {
 		input = str;
 		curPos = 0;
+		curStringNumber = 0;
 		regexps = new ArrayList<Regexp>();
 
 		//auto-generated

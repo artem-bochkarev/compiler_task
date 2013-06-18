@@ -3,19 +3,26 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-
+import java.util.ArrayList;
+import java.util.List;
 
 public class TokenCreator {
 	
 	public static void apply(String filename) throws IOException {
 		BufferedReader br = new BufferedReader(new FileReader(filename));
-		PrintWriter token = new PrintWriter(new FileWriter("src\\Token.java"));
-		token.print("public class Token { \n" +
+		PrintWriter tokenWriter = new PrintWriter(new FileWriter("src\\Token.java"));
+		List<String> names = new ArrayList<String>();
+		tokenWriter.print("import java.util.Map;\n" +
+				"import java.util.HashMap;\n\n" +
+				"public class Token { \n" +
 				"\tpublic TokenName name;\n" +
 				"\tpublic String str;\n" +
+				"\tpublic Map<TokenName, String> names;\n" +
 				"\tpublic Token(TokenName tName, String str) {\n" +
 				"\t\tthis.str = str;\n" +
+				"\t\tnames = new HashMap<TokenName, String>();\n" +
 				"\t\tname = tName;\n" +
+				"\t\tinit();\n" +
 				"\t}\n"+
 				"\tpublic enum TokenName {\n" +
 				"\t\tEND");
@@ -23,6 +30,8 @@ public class TokenCreator {
 		while ((s.charAt(0) != '@')||(s.charAt(1) != 'L')) {
 			s = br.readLine();
 		}
+		
+		names.add("END");
 		s = br.readLine();
 		while (s.charAt(0) != '@') {
 			s = removeWS(s);
@@ -31,11 +40,26 @@ public class TokenCreator {
 				continue;
 			}
 			String name = s.substring(0, s.indexOf(':'));
-			token.print(", " + name);
+			names.add(name);
+			tokenWriter.print(", " + name);
 			s = br.readLine();
 		}
-		token.print("\n\t}\n}");
-		token.close();
+		tokenWriter.println("\n\t}");
+		
+		tokenWriter.print("\tprivate void init() {\n");
+		for (String name : names) {
+			tokenWriter.println("\t\tnames.put( TokenName." + name + ", \"" + name + "\" );");
+		}
+		
+		tokenWriter.println("\t}\n");
+		
+		tokenWriter.print("\tpublic String getName(TokenName name) {\n" +
+						  "\t\treturn names.get(name);\n" +
+						  "\t}\n");
+		
+		tokenWriter.println("}");
+		tokenWriter.close();
+		br.close();
 	}
 	
 	private static String removeWS(String s) {
