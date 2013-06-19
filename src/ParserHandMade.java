@@ -12,6 +12,9 @@ public class ParserHandMade {
 		expr, operator, var_access, number, function_call, arg_list, type, S
 	}
 	
+	private List<HashMap<String, Types>> identifiers;
+	Types currentType;
+	
 	public enum Types {
 		INT, FLOAT, CHAR
 	}
@@ -21,6 +24,8 @@ public class ParserHandMade {
 		typesMap.put("int", Types.INT);
 		typesMap.put("float", Types.FLOAT);
 		typesMap.put("char", Types.CHAR);
+		identifiers = new ArrayList<HashMap<String, Types>>();
+		identifiers.add(new HashMap<String, ParserHandMade.Types>());
 	}
 	
 	Lexer choosePanicLexer(Lexer l1, Lexer l2) {
@@ -210,12 +215,13 @@ public class ParserHandMade {
 	Result type() throws ParseException {
 		Result result = new Result("type");
 		
-		String currentType = lex.curStr;
-		if ( typesMap.containsKey(currentType) == false ) {
+		String typeName = lex.curStr;
+		if ( typesMap.containsKey(typeName) == false ) {
 			//error unknown type
-			result.setError("Unknown type: " + currentType + '\n', lex.getPosInString(), lex.curStringNumber);
+			result.setError("Unknown type: " + typeName + '\n', lex.getPosInString(), lex.curStringNumber);
 			return result;
 		}
+		currentType = typesMap.get(typeName);
 		addToResultAndNext(result, lex);
 		return result;
 	}
@@ -335,45 +341,51 @@ public class ParserHandMade {
 		if ( lex.curToken().name != Token.TokenName.T_ID ) {
 			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.getPosInString(), lex.curStringNumber);
 		}else {
+			String id = lex.curStr;
 			addToResultAndNext(result, lex);
 			switch (lex.curToken().name) {
-			case T_SOS: {
-				//array init
-				addToResultAndNext(result, lex);
-				if ( lex.curToken != Token.TokenName.T_SCS ) {
-					result.appendResult(expression());
-					if ( result.result != Result.Res.SUCCESS ) {
+				case T_SOS: {
+					//array init
+					addToResultAndNext(result, lex);
+					if ( lex.curToken != Token.TokenName.T_SCS ) {
+						result.appendResult(expression());
+						if ( result.result != Result.Res.SUCCESS ) {
+							lex = copy;
+							return result;
+						}
+					}
+					
+					if ( lex.curToken().name != Token.TokenName.T_SCS ) {
 						lex = copy;
+						result.setError("This token (" + lex.curStr + ") not expected here, T_SCS should be here\n", lex.getPosInString(), lex.curStringNumber);
 						return result;
 					}
-				}
-				
-				if ( lex.curToken().name != Token.TokenName.T_SCS ) {
+					addToResultAndNext(result, lex);
+					
+					if ( lex.curToken().name == Token.TokenName.T_ASSIGN ) {
+						addToResultAndNext(result, lex);
+						result.appendResult(expression());
+					}
+				}break;
+				case T_ASSIGN: {
+					addToResultAndNext(result, lex);
+					result.appendResult(expression());
+				}break;
+				case T_OS: {
+					//disabled
 					lex = copy;
-					result.setError("This token (" + lex.curStr + ") not expected here, T_SCS should be here\n", lex.getPosInString(), lex.curStringNumber);
-					return result;
+					result.setError("This token (" + lex.curStr + ") not expected here, T_ASSIGN should be here\n", lex.getPosInString(), lex.curStringNumber);
+				}break;
+				default: {
+					//result.tree = new Tree("type", new Tree(lex.curStr));
+					//ok
 				}
-				addToResultAndNext(result, lex);
-				
-				if ( lex.curToken().name != Token.TokenName.T_ASSIGN ) {
-					return result;
-				}
-				addToResultAndNext(result, lex);
-				result.appendResult(expression());
-			}break;
-			case T_ASSIGN: {
-				addToResultAndNext(result, lex);
-				result.appendResult(expression());
-			}break;
-			case T_OS: {
-				//disabled
-				lex = copy;
-				result.setError("This token (" + lex.curStr + ") not expected here, T_ASSIGN should be here\n", lex.getPosInString(), lex.curStringNumber);
-			}break;
-			default: {
-				//result.tree = new Tree("type", new Tree(lex.curStr));
-				//ok
 			}
+			if ( result.result == Result.Res.SUCCESS ) {
+				if ( identifiers.get(identifiers.size()-1).containsKey(id) )
+					result.setError("Duplicate identifier: " + id + "\n", 0, lex.curStringNumber);
+				else
+					identifiers.get(identifiers.size()-1).put(id, currentType);
 			}
 		}
 		
@@ -463,6 +475,9 @@ public class ParserHandMade {
 			result.setError("This token (" + lex.curStr + ") not expected here, { should be here\n", lex.getPosInString(), lex.curStringNumber);
 			return result;
 		}
+		
+		identifiers.add(new HashMap<String, Types>());
+		
 		addToResultAndNext(result, lex);
 		result.appendResult(statements_list());
 		if (result.result != Result.Res.SUCCESS) {
@@ -470,11 +485,14 @@ public class ParserHandMade {
 			skipWhileCountOne(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
 			//return result;
 		}
+		
+		identifiers.remove(identifiers.size()-1);
 		if ( lex.curToken != Token.TokenName.T_FCS ) {
 			result.setError("This token (" + lex.curStr + ") not expected here, } should be here\n", lex.getPosInString(), lex.curStringNumber);
 			lex = copy;
 			return result;
 		}
+		
 		addToResultAndNext(result, lex);
 		
 		return result;

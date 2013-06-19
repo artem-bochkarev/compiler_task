@@ -8,6 +8,8 @@ int main()
 	int b = a + i;
 	c = b + k - );
 	b = a*b;
+	int a = 3;
+	int b = 4;
 	while ( a*b )
 	{
 		int k;
