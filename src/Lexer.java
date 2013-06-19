@@ -8,7 +8,7 @@ public class Lexer implements Cloneable {
 	int curStringNumber;
 	Token.TokenName curToken;
 	String curStr;
-		
+	
 	
 	private class Regexp {
 		public String expr;
@@ -104,9 +104,6 @@ public class Lexer implements Cloneable {
 		//auto-generated
 		skipWS = true;
 		regexps.add(new Regexp(";", Token.TokenName.T_DC, "T_DC" ));
-		regexps.add(new Regexp("int", Token.TokenName.T_INT, "T_INT" ));
-		regexps.add(new Regexp("float", Token.TokenName.T_FLOAT, "T_FLOAT" ));
-		regexps.add(new Regexp("void", Token.TokenName.T_VOID, "T_VOID" ));
 		regexps.add(new Regexp("\\d+", Token.TokenName.T_INTVALUE, "T_INTVALUE" ));
 		regexps.add(new Regexp("=", Token.TokenName.T_ASSIGN, "T_ASSIGN" ));
 		regexps.add(new Regexp("\\(", Token.TokenName.T_OS, "T_OS" ));

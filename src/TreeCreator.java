@@ -15,12 +15,12 @@ public class TreeCreator {
 	
 	public static void apply(String filename) throws IOException {
 		BufferedReader br = new BufferedReader(new FileReader(filename));
-		BufferedReader parserImpl = new BufferedReader(new FileReader("TreeExample.java"));
+		BufferedReader treeExample = new BufferedReader(new FileReader("TreeExample.java"));
 		PrintWriter tree = new PrintWriter(new FileWriter("src\\Tree.java"));
-		String s = parserImpl.readLine();
+		String s = treeExample.readLine();
 		while (s.indexOf("//auto-generated") < 0) {
 			tree.println(s);
-			s = parserImpl.readLine();
+			s = treeExample.readLine();
 		}
 		tree.println(s);
 		
@@ -55,6 +55,8 @@ public class TreeCreator {
 		}
 		tree.print("}\n");
 		tree.close();
+		treeExample.close();
+		br.close();
 	}
 	
 	private static String addAtribute(String s) {

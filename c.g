@@ -1,8 +1,5 @@
 @Lexer
 	T_DC:;
-	T_INT:int
-	T_FLOAT:float
-	T_VOID:void
 	T_INTVALUE:\d+
 	T_ASSIGN:=
 	
@@ -30,7 +27,7 @@
 	HashSet<String> variables = new HashSet<String>();
 @Parser
 	S();
-	type    -> T_INT | T_FLOAT
+	type    -> T_ID
 	S       -> program
 	
 	program           -> global_list
@@ -41,12 +38,12 @@
 	var_init          -> T_ID T_ASSIGN expression | T_ID T_SOS expression T_SCS T_ASSIGN expression | T_ID T_SOS expression T_SCS | T_ID T_OS expression T_CS | T_ID
 	func_def          -> type T_ID T_OS arg_decl_list  T_CS statements_block
 	arg_decl_list     -> arg_decl T_COMMON arg_decl_list | arg_decl
-	arg_decl          -> type T_ID | type
+	arg_decl          -> type T_ID | type | eps
 	
 	statement_or_block-> statements_block | statement
 	statements_block  -> T_FOS statements_list T_FCS
 	statements_list   -> statement statements_list | statement
-	statement         -> expression T_DC | if_stmt | while_stmt | return_stmt | var_def T_DC
+	statement         -> var_access T_ASSIGN expression T_DC | if_stmt | while_stmt | return_stmt | var_def T_DC
 #	statement         -> var_init
 	
 	while_stmt        -> T_WHILE T_OS expression T_CS statement_or_block

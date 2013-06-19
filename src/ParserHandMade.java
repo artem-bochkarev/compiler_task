@@ -2,6 +2,7 @@ import java.text.ParseException;
 import java.util.*;
 
 import javax.management.RuntimeErrorException;
+
 public class ParserHandMade {
 	Lexer lex;
 	ParseException globalException;
@@ -14,6 +15,27 @@ public class ParserHandMade {
 	
 	public enum Types {
 		INT, FLOAT, CHAR
+	}
+	
+	public ParserHandMade() {
+		typesMap = new HashMap<String, ParserHandMade.Types>();
+		typesMap.put("int", Types.INT);
+		typesMap.put("float", Types.FLOAT);
+		typesMap.put("char", Types.CHAR);
+	}
+	
+	Lexer choosePanicLexer(Lexer l1, Lexer l2) {
+		if ( l1.curStringNumber == l2.curStringNumber ) {
+			if ( l1.curPos > l2.curPos ) {
+				return l1;
+			}
+			return l2;
+		}
+		if ( l1.curStringNumber > l2.curStringNumber ) {
+			return l1;
+		}else {
+			return l2;
+		}
 	}
 	
 	Map<String, Types> typesMap; 
@@ -116,8 +138,9 @@ public class ParserHandMade {
 			resSet.add   (Token.TokenName.T_ID);
 		}break;
 		case type: {
-			resSet.add   (Token.TokenName.T_INT);
-			resSet.add   (Token.TokenName.T_FLOAT);
+			//resSet.add   (Token.TokenName.T_INT);
+			//resSet.add   (Token.TokenName.T_FLOAT);
+			resSet.add(Token.TokenName.T_ID);
 		}break;
 		case S: {
 			resSet.addAll(getNextTokenVariants(Terminal.program));
@@ -138,9 +161,27 @@ public class ParserHandMade {
 	}*/
 	
 	void skipWhile(Token.TokenName name) throws ParseException {
-		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken().name != Token.TokenName.T_DC) ) {
+		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken().name != name) ) {
 			lex.nextToken();
 		}
+	}
+	
+	void skipWhileCountOne(Token.TokenName inc, Token.TokenName dec) throws ParseException {
+		int counter = 1;
+		while ( lex.curToken != Token.TokenName.END && counter > 0 ) {
+			lex.nextToken();
+			if (lex.curToken == inc)
+				++counter;
+			if (lex.curToken == dec)
+				--counter;
+		}
+	}
+	
+	void skipWhileCount(Token.TokenName inc, Token.TokenName dec) throws ParseException {
+		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken().name != inc) ) {
+			lex.nextToken();
+		}
+		skipWhileCountOne(inc, dec);
 	}
 	
 	void skipWhile(Set<Token.TokenName> set) throws ParseException {
@@ -150,65 +191,73 @@ public class ParserHandMade {
 	}
 	
 	
-	Tree parse(String str) throws ParseException {
+	Result parse(String str) throws ParseException {
 		lex = new Lexer(str);
 		lex.nextToken();
 		//auto-generated
 		Result result = S();
-		if (lex.curToken().name != Token.TokenName.END) {
+		/*if (lex.curToken().name != Token.TokenName.END) {
 			throw globalException;
-		}
-		return result.tree;
+		}*/
+		return result;
 	}
 		HashSet<String> variables = new HashSet<String>();
+	
+		private void addToResultAndNext(Result result, Lexer lex) throws ParseException {
+			result.addChildren(lex.curStr);
+			lex.nextToken();
+		}
 
 	Result type() throws ParseException {
-		Result result = new Result();
-		Lexer copy = lex.copy();
+		Result result = new Result("type");
 		
 		String currentType = lex.curStr;
 		if ( typesMap.containsKey(currentType) == false ) {
 			//error unknown type
 			result.setError("Unknown type: " + currentType + '\n', lex.curPos, lex.curStringNumber);
-			lex = copy;
 			return result;
 		}
-		result.result = Result.Res.SUCCESS;
-		result.tree = new Tree("type", new Tree(currentType));
+		addToResultAndNext(result, lex);
 		return result;
 	}
 	Result S() throws ParseException {
-		return program();
+		Result result = new Result("S");
+		result.appendResult(program());
+		return result;
 	}
 	Result program() throws ParseException {
-		return global_list();
-		
+		Result result = new Result("program");
+		result.appendResult(global_list());
+		if ( lex.curToken != Token.TokenName.END ) {
+			result.setError("This token" + lex.curStr + "not expected here, END shoud be here\n", lex.curPos, lex.curStringNumber);
+		}
+		addToResultAndNext(result, lex);
+		return result;
 	}
+	
 	Result global_list() throws ParseException {
-		Result result = new Result();
-		result.result = Result.Res.SUCCESS;
+		Result result = new Result("global_list");
 		
 		Set<Token.TokenName> tokensSet = getNextTokenVariants(Terminal.global_list);
-		if ( tokensSet.contains(lex.curToken()) == false ) {
+		if ( tokensSet.contains(lex.curToken().name) == false ) {
 			//error unknown symbol...PANIC!!!
 			result.setError( "This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber );
 			//change to figure scope
 			skipWhile(tokensSet);
 		}else {
 			//normal
-			result = global_statement();
+			result.appendResult(global_statement());
 		}
 		if ( lex.curToken != Token.TokenName.END ) {
-			Result tmp = global_list();
-			result.appendResult(tmp);
+			result.appendResult(global_list());
 		}
 		return result;
 	}
+	
 	Result global_statement() throws ParseException {
-		Result result = new Result();
-		result.result = Result.Res.SUCCESS;
+		Result result = new Result("global_statement");
 		Set<Token.TokenName> tokensSet = getNextTokenVariants(Terminal.global_statement);
-		if (tokensSet.contains(lex.curToken()) == false) {
+		if (tokensSet.contains(lex.curToken().name) == false) {
 			result.setError("This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber);
 			return result;
 		}else {
@@ -217,122 +266,484 @@ public class ParserHandMade {
 			if ( resultVAR_DEF.result == Result.Res.SUCCESS ) {
 				return resultVAR_DEF;
 			}
+			Lexer copyVar = lex.copy();
 			lex = copy;
 			copy = lex.copy();
 			Result resultFUNC_DEF = func_def();
 			if ( resultFUNC_DEF.result == Result.Res.SUCCESS ) {
 				return resultFUNC_DEF;
 			}
-			lex = copy;
-			result = Result.chooseResult(resultVAR_DEF, resultFUNC_DEF);
+			Lexer copyFunc = lex.copy();
+			lex = choosePanicLexer(copyVar, copyFunc);
+			result.appendResult(Result.chooseResult(resultVAR_DEF, resultFUNC_DEF));
 		}
 		return result;
 	}
 	Result var_def() throws ParseException {
-		Result result = new Result();
-		result.result = Result.Res.SUCCESS;
-		Set<Token.TokenName> tokensSet = getNextTokenVariants(Terminal.global_statement);
-		if (tokensSet.contains(lex.curToken()) == false) {
+		Result result = new Result("var_def");
+		
+		result.appendResult(type());
+		if (result.result != Result.Res.SUCCESS) {
 			//Panic...;
-			result.setError("This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber);
+			result.setError("This token not expected here: " + lex.curStr + '\n', lex.curPos, lex.curStringNumber, true);
 			skipWhile(Token.TokenName.T_DC);
 			lex.nextToken();
 			return result;
+		}
+		
+		result.appendResult(var_init_list());
+		if ( result.result == Result.Res.FAIL ) {
+			skipWhile(Token.TokenName.T_DC);
+			lex.nextToken();
+			return result;
+		}
+		if ( lex.curToken().name != Token.TokenName.T_DC ) {
+			//Panic
+			result.setError("This token (" + lex.curStr + ") not expected here, ; should be here\n", lex.curPos, lex.curStringNumber, true);
+			skipWhile(Token.TokenName.T_DC);
+			lex.nextToken();
+		}
+		addToResultAndNext(result, lex);
+		
+		return result;
+	}
+	Result var_init_list() throws ParseException {
+		Result result = new Result("var_init_list");
+		result.appendResult(var_init());
+		while ( result.result == Result.Res.SUCCESS && lex.curToken().name == Token.TokenName.T_COMMON ) {
+			addToResultAndNext(result, lex);
+			result.appendResult(var_init_list());
+		}
+		return result;
+	}
+	Result var_init() throws ParseException {
+		Result result = new Result("var_init");
+		Lexer copy = lex.copy();
+		
+		if ( lex.curToken().name != Token.TokenName.T_ID ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.curPos, lex.curStringNumber);
 		}else {
-			result = var_init_list();
-			if ( result.result == Result.Res.FAIL ) {
-				skipWhile(Token.TokenName.T_DC);
-				lex.nextToken();
-				return result;
+			addToResultAndNext(result, lex);
+			switch (lex.curToken().name) {
+			case T_SOS: {
+				//array init
+				result.appendResult(expression());
+				if ( result.result != Result.Res.SUCCESS ) {
+					lex = copy;
+					return result;
+				}
+				
+				if ( lex.curToken().name != Token.TokenName.T_SCS ) {
+					lex = copy;
+					result.setError("This token (" + lex.curStr + ") not expected here, T_SCS should be here\n", lex.curPos, lex.curStringNumber);
+					return result;
+				}
+				addToResultAndNext(result, lex);
+				
+				if ( lex.curToken().name != Token.TokenName.T_ASSIGN ) {
+					return result;
+				}
+				addToResultAndNext(result, lex);
+				result.appendResult(expression());
+			}break;
+			case T_ASSIGN: {
+				result.appendResult(expression());
+			}break;
+			case T_OS: {
+				//disabled
+				lex = copy;
+				result.setError("This token (" + lex.curStr + ") not expected here, T_ASSIGN should be here\n", lex.curPos, lex.curStringNumber);
+			}break;
+			default: {
+				//result.tree = new Tree("type", new Tree(lex.curStr));
+				//ok
 			}
-			if ( lex.curToken().name != Token.TokenName.T_DC ) {
-				result.setError("This token (" + lex.curStr + ") not expected here, ; should be here\n", lex.curPos, lex.curStringNumber);
-				skipWhile(Token.TokenName.T_DC);
-				lex.nextToken();
 			}
 		}
 		
 		return result;
 	}
-	Result var_init_list() throws ParseException {
-		Result result = new Result();
-		result = var_init();
-		while ( result.result == Result.Res.SUCCESS && lex.curToken().name == Token.TokenName.T_COMMON ) {
-			lex.nextToken();
-			result.appendResult(var_init());
+	Result func_def() throws ParseException {
+		Result result = new Result("func_def");
+		Lexer copy = lex.copy();
+		result.appendResult(type());
+		if ( result.result != Result.Res.SUCCESS ) {
+			//PANIC!!
+			result.skipped = true;
+			skipWhileCount(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
+			return result;
+		}
+		if ( lex.curToken != Token.TokenName.T_ID ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.curPos, lex.curStringNumber);
+			skipWhileCount(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		
+		if ( lex.curToken != Token.TokenName.T_OS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, T_OS should be here\n", lex.curPos, lex.curStringNumber);
+			skipWhileCount(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		
+		result.appendResult(arg_decl_list());
+		if ( result.result != Result.Res.SUCCESS ) {
+			//PANIC!!
+			result.skipped = true;
+			skipWhileCountOne(Token.TokenName.T_OS, Token.TokenName.T_CS);
+			return result;
+		}
+		
+		if ( lex.curToken != Token.TokenName.T_CS ) {
+			//Panic
+			result.setError("This token (" + lex.curStr + ") not expected here, T_CS should be here\n", lex.curPos, lex.curStringNumber);
+			result.skipped = true;
+			skipWhileCount(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		
+		result.appendResult(statements_block());
+		return result;
+	}
+	
+	Result arg_decl_list() throws ParseException {
+		Result result = new Result("arg_decl_list");
+		result = arg_decl();
+		if ( result.result == Result.Res.FAIL ) {
+			return result;
+		}
+		
+		if ( lex.curToken == Token.TokenName.T_COMMON ) {
+			addToResultAndNext(result, lex);
+			return arg_decl_list();
 		}
 		return result;
 	}
-	Result var_init() throws ParseException {
-		Result result = new Result();
-		return result;
-	}
-	Result func_def() throws ParseException {
-		Result result = new Result();
-		return result;
-	}
-	Result arg_decl_list() throws ParseException {
-		Result result = new Result();
-		return result;
-	}
+	
 	Result arg_decl() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("arg_decl");
+		result.appendResult(type());
+		if ( result.result == Result.Res.FAIL ) {
+			return result;
+		}
+		if ( lex.curToken == Token.TokenName.T_ID ) {
+			addToResultAndNext(result, lex);
+		}
 		return result;
 	}
+	
 	Result statement_or_block() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("statement_or_block");
+		if ( lex.curToken == Token.TokenName.T_FOS ) {
+			addToResultAndNext(result, lex);
+			result.appendResult(statements_block());
+		}else {
+			result.appendResult(statement());
+		}
 		return result;
 	}
 	Result statements_block() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("statements_block");
+		Lexer copy = lex.copy();
+		if ( lex.curToken != Token.TokenName.T_FOS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, { should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(statements_list());
+		if ( lex.curToken != Token.TokenName.T_FCS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, } should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		
 		return result;
 	}
 	Result statements_list() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("statements_list");
+		result.appendResult(statement());
+		if ( result.result != Result.Res.SUCCESS ) {
+			return result;
+		}
+		Result list_result = statements_list();
+		if ( list_result.result == Result.Res.SUCCESS ) {
+			result.appendResult(list_result);
+		}
 		return result;
 	}
 	Result statement() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("statement");
+		switch (lex.curToken) {
+		case T_IF: {
+			result.appendResult(if_stmt());
+		}break;
+		case T_WHILE: {
+			result.appendResult(while_stmt());
+		}break;
+		case T_RETURN: {
+			result.appendResult(return_stmt());
+		}break;
+		case T_ID: {
+			Lexer copy = lex.copy();
+			addToResultAndNext(result, lex);
+			if ( lex.curToken == Token.TokenName.T_ASSIGN ) {
+				addToResultAndNext(result, lex);
+				result.appendResult(expression());
+				if ( result.result == Result.Res.FAIL ) {
+					lex = copy;
+					return result;
+				}
+				if ( lex.curToken != Token.TokenName.T_DC ) {
+					result.setError("This token (" + lex.curStr + ") not expected here, ; should be here\n", lex.curPos, lex.curStringNumber);
+					lex = copy;
+					return result;
+				}
+				addToResultAndNext(result, lex);
+				return result;
+			}
+			result.appendResult(var_def());
+		}break;
+		default: {
+			result.setError("This token (" + lex.curStr + ") not expected here\n", lex.curPos, lex.curStringNumber);
+		}
+		}
 		return result;
 	}
 	Result while_stmt() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("while_stmt");
+		Lexer copy = lex.copy();
+		if ( lex.curToken != Token.TokenName.T_WHILE ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, while should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		if ( lex.curToken != Token.TokenName.T_OS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ( should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(expression());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		if ( lex.curToken != Token.TokenName.T_CS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ) should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(statement_or_block());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
 		return result;
 	}
 	Result if_stmt() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("if_stmt");
+		Lexer copy = lex.copy();
+		if ( lex.curToken != Token.TokenName.T_IF ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, if should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		if ( lex.curToken != Token.TokenName.T_OS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ( should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(expression());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		if ( lex.curToken != Token.TokenName.T_CS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ) should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(statement_or_block());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		if ( lex.curToken != Token.TokenName.T_ELSE )
+			return result;
+		addToResultAndNext(result, lex);
+		result.appendResult(statement_or_block());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
 		return result;
 	}
 	Result return_stmt() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("return_stmt");
+		Lexer copy = lex.copy();
+		if ( lex.curToken != Token.TokenName.T_RETURN ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, return should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		result.appendResult(expression());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		if ( lex.curToken != Token.TokenName.T_DC ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ; should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
 		return result;
 	}
 	Result expression() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("expression");
+		Lexer copy = lex.copy();
+		if ( lex.curToken == Token.TokenName.T_OS ) {
+			addToResultAndNext(result, lex);
+			result.appendResult(expression());
+			if ( result.result == Result.Res.FAIL ) {
+				lex = copy;
+				return result;
+			}
+			if ( lex.curToken != Token.TokenName.T_CS ) {
+				result.setError("This token (" + lex.curStr + ") not expected here, ) should be here\n", lex.curPos, lex.curStringNumber);
+				lex = copy;
+				return result;
+			}
+			addToResultAndNext(result, copy);
+			return result;
+		}
+		
+		result.appendResult(expr());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		
+		Result oper_result = operator();
+		if ( oper_result.result == Result.Res.SUCCESS ) {
+			result.appendResult(oper_result);
+			Result expressionResult = expression();
+			if ( expressionResult.result != Result.Res.SUCCESS ) {
+				lex = copy;
+			}
+			result.appendResult(expressionResult);
+		}
 		return result;
 	}
 	Result expr() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("expr");
+		
+		Result varResult = var_access();
+		if ( varResult.result == Result.Res.SUCCESS ) {
+			result.appendResult(varResult);
+			return result;
+		}
+		
+		Result funcResult = function_call();
+		if ( funcResult.result == Result.Res.SUCCESS ) {
+			result.appendResult(funcResult);
+			return result;
+		}
+		
+		Result numResult = number();
+		if ( numResult.result == Result.Res.SUCCESS ) {
+			result.appendResult(numResult);
+			return result;
+		}
+		result.setError("This token (" + lex.curStr + ") not expected here, T_ID or VALUE should be here\n", lex.curPos, lex.curStringNumber);
 		return result;
 	}
 	Result operator() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("operator");
+		
+		switch (lex.curToken) {
+		case T_PLUS:
+		case T_MINUS:
+		case T_MUL:
+		case T_DIV:
+		{
+			addToResultAndNext(result, lex);
+		}break;
+		default:
+			result.setError("Unknown operator (" + lex.curStr + ")\n", lex.curPos, lex.curStringNumber);
+		}
+		
 		return result;
 	}
 	Result var_access() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("var_access");
+		if ( lex.curToken != Token.TokenName.T_ID ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.curPos, lex.curStringNumber);
+		}
+		addToResultAndNext(result, lex);
 		return result;
 	}
 	Result number() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("number");
+		switch (lex.curToken) {
+		case T_INTVALUE: {
+			addToResultAndNext(result, lex);
+			//result.tree.children.add(new Tree(lex.curStr));
+		}break;
+		case T_STRING: {
+			addToResultAndNext(result, lex);
+			//result.tree.children.add(new Tree(lex.curStr));
+		}break;
+		default:
+			result.setError("This token (" + lex.curStr + ") not expected here, T_INTVALUE or T_STRING should be here\n", lex.curPos, lex.curStringNumber);
+		}
 		return result;
 	}
 	Result function_call() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("function_call");
+		Lexer copy = lex.copy();
+		if ( lex.curToken != Token.TokenName.T_ID ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		if ( lex.curToken != Token.TokenName.T_OS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ( should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
+		
+		result.appendResult(arg_list());
+		if ( result.result == Result.Res.FAIL ) {
+			lex = copy;
+			return result;
+		}
+		
+		if ( lex.curToken != Token.TokenName.T_CS ) {
+			result.setError("This token (" + lex.curStr + ") not expected here, ( should be here\n", lex.curPos, lex.curStringNumber);
+			lex = copy;
+			return result;
+		}
+		addToResultAndNext(result, lex);
 		return result;
 	}
 	Result arg_list() throws ParseException {
-		Result result = new Result();
+		Result result = new Result("arg_list");
+		result.appendResult(expression());
+		if ( result.result == Result.Res.FAIL ) {
+			return result;
+		}
+		Result list_result = arg_list();
+		if ( list_result.result != Result.Res.FAIL ) {
+			result.appendResult(list_result);
+		}
 		return result;
 	}
 }

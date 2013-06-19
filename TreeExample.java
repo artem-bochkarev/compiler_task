@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class Tree {
@@ -13,6 +14,7 @@ public class Tree {
 	public Tree(String node) {
 		this.label = node;
 		this.uniqueName =  Integer.toString(this.hashCode());
+		children = new ArrayList<Tree>();
 	}
 	
 	private String toString(String prefix) {
@@ -21,7 +23,7 @@ public class Tree {
 		if (children != null) {
 			s += " -> ";
 			for (Tree tree:children) {
-				s += tree.label;
+				s += tree.label + " ";
 			}
 		}
 		s += "\n";
@@ -40,7 +42,7 @@ public class Tree {
 		if (children != null) {
 			s += " -> ";
 			for (Tree tree:children) {
-				s += tree.label;
+				s += tree.label + " ";
 			}
 		}
 		s += "\n";
