@@ -673,15 +673,15 @@ public class ParserHandMade {
 	Result expr() throws ParseException {
 		Result result = new Result("expr");
 		
-		Result varResult = var_access();
-		if ( varResult.result == Result.Res.SUCCESS ) {
-			result.appendResult(varResult);
-			return result;
-		}
-		
 		Result funcResult = function_call();
 		if ( funcResult.result == Result.Res.SUCCESS ) {
 			result.appendResult(funcResult);
+			return result;
+		}
+		
+		Result varResult = var_access();
+		if ( varResult.result == Result.Res.SUCCESS ) {
+			result.appendResult(varResult);
 			return result;
 		}
 		
@@ -770,9 +770,9 @@ public class ParserHandMade {
 		if ( result.result == Result.Res.FAIL ) {
 			return result;
 		}
-		Result list_result = arg_list();
-		if ( list_result.result != Result.Res.FAIL ) {
-			result.appendResult(list_result);
+		if ( lex.curToken == Token.TokenName.T_COMMON ) {
+			addToResultAndNext(result, lex);
+			result.appendResult(arg_list());
 		}
 		return result;
 	}

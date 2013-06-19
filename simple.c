@@ -12,5 +12,11 @@ int main()
 	{
 		int k;
 	}
+	if ( c-b )
+		c = c + 1;
+	if ( a-b )
+		c = c - 1;
+	else
+		b = f(a,b);
 	return a);
 }
