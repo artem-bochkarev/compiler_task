@@ -3,5 +3,8 @@ int a;
 
 int main()
 {
-	return a;
+	int b = a + i;
+	c = b + k - );
+	b = a*b;
+	return a);
 }

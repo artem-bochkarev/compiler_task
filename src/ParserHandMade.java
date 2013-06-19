@@ -1,7 +1,6 @@
 import java.text.ParseException;
 import java.util.*;
 
-import javax.management.RuntimeErrorException;
 
 public class ParserHandMade {
 	Lexer lex;
@@ -161,7 +160,7 @@ public class ParserHandMade {
 	}*/
 	
 	void skipWhile(Token.TokenName name) throws ParseException {
-		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken().name != name) ) {
+		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken != name) ) {
 			lex.nextToken();
 		}
 	}
@@ -178,14 +177,14 @@ public class ParserHandMade {
 	}
 	
 	void skipWhileCount(Token.TokenName inc, Token.TokenName dec) throws ParseException {
-		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken().name != inc) ) {
+		while ( (lex.curToken != Token.TokenName.END) && (lex.curToken != inc) ) {
 			lex.nextToken();
 		}
 		skipWhileCountOne(inc, dec);
 	}
 	
 	void skipWhile(Set<Token.TokenName> set) throws ParseException {
-		while ( (lex.curToken != Token.TokenName.END) && (set.contains( lex.curToken() ) == false) ) {
+		while ( (lex.curToken != Token.TokenName.END) && (set.contains( lex.curToken ) == false) ) {
 			lex.nextToken();
 		}
 	}
@@ -347,6 +346,7 @@ public class ParserHandMade {
 				result.appendResult(expression());
 			}break;
 			case T_ASSIGN: {
+				addToResultAndNext(result, lex);
 				result.appendResult(expression());
 			}break;
 			case T_OS: {
@@ -410,7 +410,10 @@ public class ParserHandMade {
 	
 	Result arg_decl_list() throws ParseException {
 		Result result = new Result("arg_decl_list");
-		result = arg_decl();
+		if ( lex.curToken == Token.TokenName.T_CS ) {
+			return result;
+		}
+		result.appendResult(arg_decl());
 		if ( result.result == Result.Res.FAIL ) {
 			return result;
 		}
@@ -453,6 +456,11 @@ public class ParserHandMade {
 		}
 		addToResultAndNext(result, lex);
 		result.appendResult(statements_list());
+		if (result.result != Result.Res.SUCCESS) {
+			lex = copy;
+			skipWhileCountOne(Token.TokenName.T_FOS, Token.TokenName.T_FCS);
+			//return result;
+		}
 		if ( lex.curToken != Token.TokenName.T_FCS ) {
 			result.setError("This token (" + lex.curStr + ") not expected here, } should be here\n", lex.curPos, lex.curStringNumber);
 			lex = copy;
@@ -466,7 +474,17 @@ public class ParserHandMade {
 		Result result = new Result("statements_list");
 		result.appendResult(statement());
 		if ( result.result != Result.Res.SUCCESS ) {
-			return result;
+			Set<Token.TokenName> set = new HashSet<Token.TokenName>();
+			set.add(Token.TokenName.T_DC);
+			set.add(Token.TokenName.T_FCS);
+			skipWhile(set);
+			result.addChildren("FAILED");
+			
+			if ( lex.curToken == Token.TokenName.T_FCS || lex.curToken == Token.TokenName.END) {
+				return result;
+			}
+			result.result = Result.Res.SUCCESS;
+			addToResultAndNext(result, lex);
 		}
 		Result list_result = statements_list();
 		if ( list_result.result == Result.Res.SUCCESS ) {
@@ -503,6 +521,8 @@ public class ParserHandMade {
 				}
 				addToResultAndNext(result, lex);
 				return result;
+			}else {
+				lex = copy;
 			}
 			result.appendResult(var_def());
 		}break;
@@ -685,6 +705,7 @@ public class ParserHandMade {
 		Result result = new Result("var_access");
 		if ( lex.curToken != Token.TokenName.T_ID ) {
 			result.setError("This token (" + lex.curStr + ") not expected here, T_ID should be here\n", lex.curPos, lex.curStringNumber);
+			return result;
 		}
 		addToResultAndNext(result, lex);
 		return result;
