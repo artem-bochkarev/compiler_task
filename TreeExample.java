@@ -27,7 +27,7 @@ public class Tree {
 			}
 		}
 		s += "\n";
-		if (children != null) {
+		if (children != null  && children.size() > 0) {
 			for (Tree tree:children) {
 				s += prefix + "\t";
 				s += tree.toString(prefix + "\t");
@@ -46,7 +46,7 @@ public class Tree {
 			}
 		}
 		s += "\n";
-		if (children != null) {
+		if (children != null  && children.size() > 0) {
 			for (Tree tree:children) {
 				s += "\t";
 				s += tree.toString("\t");

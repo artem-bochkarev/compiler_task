@@ -1,5 +1,7 @@
 int i = 123;
 int a;
+char str[5] = "Hello";
+char s[] = "Hi!";
 
 int main()
 {

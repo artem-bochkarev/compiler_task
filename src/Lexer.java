@@ -6,6 +6,7 @@ public class Lexer implements Cloneable {
 	int curChar;
 	int curPos;
 	int curStringNumber;
+	int posDiff;
 	Token.TokenName curToken;
 	String curStr;
 	
@@ -32,6 +33,7 @@ public class Lexer implements Cloneable {
 		c.curStr = curStr;
 		c.regexps = regexps;
 		c.curStringNumber = curStringNumber;
+		c.posDiff = posDiff;
 	    return c;
 	}
 	
@@ -54,8 +56,10 @@ public class Lexer implements Cloneable {
 			if ( curPos >= input.length() )
 				return;
 			while (isBlank(input.charAt(curPos))) {
-				if ( input.charAt(curPos) == '\n' )
+				if ( input.charAt(curPos) == '\n' ) {
 					curStringNumber++;
+					posDiff = curPos;
+				}
 				curPos++;
 				if ( curPos >= input.length() )
 					return;
@@ -93,6 +97,10 @@ public class Lexer implements Cloneable {
 	
 	public int curStringNumber() {
 		return curStringNumber;
+	}
+	
+	public int getPosInString() {
+		return curPos - posDiff;
 	}
 	
 	public Lexer(String str) throws ParseException {

@@ -35,7 +35,7 @@
 	global_statement  -> var_def | func_def
 	var_def           -> type var_init_list T_DC
 	var_init_list     -> var_init T_COMMON var_init_list | var_init
-	var_init          -> T_ID T_ASSIGN expression | T_ID T_SOS expression T_SCS T_ASSIGN expression | T_ID T_SOS expression T_SCS | T_ID T_OS expression T_CS | T_ID
+	var_init          -> T_ID T_ASSIGN expression | T_ID T_SOS expression T_SCS T_ASSIGN expression | T_ID T_SOS expression T_SCS | T_ID T_SOS T_SCS | T_ID T_OS expression T_CS | T_ID
 	func_def          -> type T_ID T_OS arg_decl_list  T_CS statements_block
 	arg_decl_list     -> arg_decl T_COMMON arg_decl_list | arg_decl | eps
 	arg_decl          -> type T_ID | type | eps

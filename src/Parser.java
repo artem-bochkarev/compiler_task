@@ -8,15 +8,15 @@ public class Parser {
 		lex = new Lexer(str);
 		lex.nextToken();
 		//auto-generated
-		Tree result = 	S();
+		//Tree result = 	S();
 		if (lex.curToken().name != Token.TokenName.END) {
 			throw globalException;
 		}
-		return result;
+		return new Tree("empty");
 	}
 		HashSet<String> variables = new HashSet<String>();
 
-	Tree type() throws ParseException {
+	/*Tree type() throws ParseException {
 		boolean isGood = true;
 		Lexer copy = null;
 		Tree result = null;
@@ -1601,5 +1601,5 @@ public class Parser {
 
 		globalException = p;
 		throw p;
-	}
+	}*/
 }
