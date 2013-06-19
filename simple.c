@@ -8,5 +8,9 @@ int main()
 	int b = a + i;
 	c = b + k - );
 	b = a*b;
+	while ( a*b )
+	{
+		int k;
+	}
 	return a);
 }

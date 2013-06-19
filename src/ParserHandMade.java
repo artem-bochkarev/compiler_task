@@ -450,7 +450,6 @@ public class ParserHandMade {
 	Result statement_or_block() throws ParseException {
 		Result result = new Result("statement_or_block");
 		if ( lex.curToken == Token.TokenName.T_FOS ) {
-			addToResultAndNext(result, lex);
 			result.appendResult(statements_block());
 		}else {
 			result.appendResult(statement());
